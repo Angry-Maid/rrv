@@ -3188,10 +3188,6 @@ name = "rrv-core"
 version = "0.1.0-dev"
 
 [[package]]
-name = "rrv-models"
-version = "0.1.0-dev"
-
-[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
