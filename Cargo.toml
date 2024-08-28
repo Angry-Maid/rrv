@@ -1,0 +1,50 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0-dev"
+edition = "2021"
+
+[workspace.dependencies]
+rrv-core = { path = "crates/rrv-core" }
+
+# Common
+rand = "0.8.5"
+
+# Bevy deps
+bevy = { version = "0.14.0", features = ["dynamic_linking"] }
+
+[package]
+name = "rrv"
+description = "A (rust-ed) version of GTFO Replay Viewer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rand.workspace = true
+bevy.workspace = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev.package.wgpu-types]
+debug-assertions = false
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = "z"
+strip = "debuginfo"
+
+[profile.release-native]
+inherits = "release"
+opt-level = 3
+strip = "none"
+
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
+rustflags = ["-Zshare-generics=n"]

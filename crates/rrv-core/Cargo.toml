@@ -1,0 +1,6 @@
+[package]
+name = "rrv-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
