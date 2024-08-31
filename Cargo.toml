@@ -11,9 +11,14 @@ rrv-core = { path = "crates/rrv-core" }
 
 # Common
 rand = "0.8.5"
+nom = "7.1.3"
+env_logger = "0.11.5"
+log = "0.4.22"
+glam = "0.29.0"
 
 # Bevy deps
-bevy = { version = "0.14.0", features = ["dynamic_linking"] }
+# bevy = { version = "0.14.0", features = ["dynamic_linking"] }
+# leafwing-input-manager = "0.15.0"
 
 [package]
 name = "rrv"
@@ -22,8 +27,13 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+rrv-core.workspace = true
 rand.workspace = true
-bevy.workspace = true
+log.workspace = true
+env_logger.workspace = true
+
+# bevy.workspace = true
+# leafwing-input-manager.workspace = true
 
 [profile.dev]
 opt-level = 1
@@ -44,7 +54,3 @@ strip = "debuginfo"
 inherits = "release"
 opt-level = 3
 strip = "none"
-
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
-rustflags = ["-Zshare-generics=n"]

@@ -1,3 +1,11 @@
+#![feature(f16)]
+
+mod parser;
+
+pub mod prelude {
+    pub use crate::parser::*;
+}
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
