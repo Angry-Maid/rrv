@@ -9,12 +9,6 @@ pub struct Typemap<'a> {
     pub types: Vec<DataType<'a>>,
 }
 
-pub struct HeaderEntry<'a>(u16, &'a [u8]);
-
-pub struct Header<'a> {
-    entries: Vec<HeaderEntry<'a>>,
-}
-
 #[derive(Debug)]
 pub struct DataType<'a> {
     pub id: u16,

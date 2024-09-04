@@ -7,3 +7,5 @@ edition.workspace = true
 nom.workspace = true
 log.workspace = true
 glam.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
