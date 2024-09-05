@@ -16,12 +16,23 @@ use nom::{
 };
 pub use types::*;
 
-pub fn parse_replay_file(i: &[u8]) -> IResult<&[u8], &[u8]> {
+#[derive(Debug)]
+pub struct Replay<'a> {
+    pub typemap: Typemap<'a>,
+    pub header: Header<'a>,
+}
+
+pub fn parse_replay(i: &[u8]) -> IResult<&[u8], Replay> {
+    let (i, (typemap, header)) = parse_replay_file_commons(i)?;
+
+    Ok((i, Replay { typemap, header }))
+}
+
+pub fn parse_replay_file_commons(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
     let (i, metadata_size) = le_u32(i)?;
     let (i, typemap_and_header_bytes) = take(metadata_size)(i)?;
     let (leftover, (typemap, header)) = parse_typemap_and_header(typemap_and_header_bytes)?;
 
-    // info!("{:#?}", typemap);
     info!(
         "{:#?}\n{:#?}",
         header.bulkhead_controllers.first().unwrap(),
@@ -43,8 +54,9 @@ pub fn parse_replay_file(i: &[u8]) -> IResult<&[u8], &[u8]> {
         "{:#?}\n{:#?}",
         bulkhead_door, header.commons[bulkhead_door.idx]
     );
+    info!("{:?}", leftover);
 
-    Ok((i, leftover))
+    Ok((i, (typemap, header)))
 }
 
 pub fn parse_replay_string(i: &[u8]) -> IResult<&[u8], &str> {
@@ -56,6 +68,41 @@ pub fn parse_replay_bool(i: &[u8]) -> IResult<&[u8], bool> {
     let (i, val) = le_u8(i)?;
 
     Ok((i, val > 0))
+}
+
+pub fn parse_replay_identifier_type(i: &[u8]) -> IResult<&[u8], IdentifierType> {
+    let (mut i, val) = le_u8(i)?;
+    let idt = match Identifier::from_repr(val).unwrap_or_default() {
+        Identifier::Unknown => IdentifierType::Unknown,
+        Identifier::Gear => {
+            let gear;
+            let alias;
+            (i, (gear, alias)) = pair(parse_replay_string, le_u16)(i)?;
+            IdentifierType::Gear(gear, alias)
+        }
+        Identifier::AliasGear => {
+            let alias;
+            (i, alias) = le_u16(i)?;
+            IdentifierType::AliasGear(alias)
+        }
+        Identifier::Item => {
+            let id;
+            (i, id) = le_u16(i)?;
+            IdentifierType::Item(id)
+        }
+        Identifier::Enemy => {
+            let id;
+            (i, id) = le_u16(i)?;
+            IdentifierType::Enemy(id)
+        }
+        Identifier::Vanity => {
+            let id;
+            (i, id) = le_u16(i)?;
+            IdentifierType::Vanity(id)
+        }
+    };
+
+    Ok((i, idt))
 }
 
 pub fn parse_vec3(i: &[u8]) -> IResult<&[u8], Vec3> {
@@ -359,6 +406,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
             }
             DataType {
                 typename: "Vanilla.Map.ResourceContainers", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16, bool)
+                version: "0.0.1",
                 ..
             } => {
                 let n;
@@ -378,8 +426,80 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                         idx: header.commons.len(),
                         serial,
                         locker,
+                        consumable_type: None,
                         registered: None,
                         lock_type: None,
+                    });
+                    header.commons.push(common);
+                }
+            }
+            DataType {
+                typename: "Vanilla.Map.ResourceContainers", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16, bool)
+                version: "0.0.2",
+                ..
+            } => {
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                info!("{:?}", n);
+                (i, items) = count(
+                    pair(
+                        tuple((le_i32, parse_commons)),
+                        tuple((
+                            le_u16,
+                            parse_replay_bool,
+                            parse_replay_identifier_type,
+                            parse_replay_bool,
+                        )),
+                    ),
+                    n.into(),
+                )(i)?;
+                for ((id, common), (serial, locker, consumable_type, registered)) in items {
+                    header.resource_containers.push(ResourceContainer {
+                        id,
+                        idx: header.commons.len(),
+                        serial,
+                        locker,
+                        consumable_type: Some(consumable_type),
+                        registered: Some(registered),
+                        lock_type: None,
+                    });
+                    header.commons.push(common);
+                }
+            }
+            DataType {
+                typename: "Vanilla.Map.ResourceContainers", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16, bool)
+                version: "0.0.3",
+                ..
+            } => {
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                info!("{:?}", n);
+                (i, items) = count(
+                    pair(
+                        tuple((le_i32, parse_commons)),
+                        tuple((
+                            le_u16,
+                            parse_replay_bool,
+                            parse_replay_identifier_type,
+                            parse_replay_bool,
+                            le_u8,
+                        )),
+                    ),
+                    n.into(),
+                )(i)?;
+                for ((id, common), (serial, locker, consumable_type, registered, lock_type)) in
+                    items
+                {
+                    header.resource_containers.push(ResourceContainer {
+                        id,
+                        idx: header.commons.len(),
+                        serial,
+                        locker,
+                        consumable_type: Some(consumable_type),
+                        registered: Some(registered),
+                        lock_type: LockType::from_repr(lock_type),
                     });
                     header.commons.push(common);
                 }

@@ -1,7 +1,3 @@
-pub struct Replay<'a> {
-    typemap: Vec<Typemap<'a>>,
-}
-
 #[derive(Debug)]
 pub struct Typemap<'a> {
     pub version: &'a str,

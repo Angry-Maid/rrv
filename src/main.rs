@@ -233,10 +233,10 @@
 // }
 
 use log::info;
-use rrv_core::prelude::parse_replay_file;
+use rrv_core::prelude::parse_replay;
 
 fn main() {
     env_logger::init();
 
-    let _ = parse_replay_file(include_bytes!("../data/R8E2 2024-08-09 19-55"));
+    let _ = parse_replay(include_bytes!("../data/R8E2 2024-08-09 19-55"));
 }

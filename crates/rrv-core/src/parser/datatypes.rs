@@ -11,10 +11,33 @@ pub struct Header<'a> {
     pub ladders: Vec<Ladder>,
     pub terminals: Vec<Terminal>,
     pub generators: Vec<Generator>,
-    pub resource_containers: Vec<ResourceContainer>,
+    pub resource_containers: Vec<ResourceContainer<'a>>,
     pub disinfect_stations: Vec<DisinfectStation>,
     pub bulkhead_controllers: Vec<BulkheadController>,
     pub spitters: Vec<Spitter>,
+}
+
+#[derive(FromRepr, Debug, PartialEq, Default)]
+#[repr(u8)]
+pub enum Identifier {
+    #[default]
+    Unknown = 0,
+    Gear,
+    AliasGear,
+    Item,
+    Enemy,
+    Vanity,
+}
+
+#[derive(Debug, PartialEq, Default)]
+pub enum IdentifierType<'a> {
+    #[default]
+    Unknown,
+    Gear(&'a str, u16),
+    AliasGear(u16),
+    Item(u16),
+    Enemy(u16),
+    Vanity(u16),
 }
 
 #[derive(Debug)]
@@ -105,12 +128,13 @@ pub enum LockType {
 }
 
 #[derive(Debug)]
-pub struct ResourceContainer {
+pub struct ResourceContainer<'a> {
     pub id: i32,
     pub idx: usize,
     pub serial: u16,
     pub locker: bool,
     pub registered: Option<bool>,
+    pub consumable_type: Option<IdentifierType<'a>>,
     pub lock_type: Option<LockType>,
 }
 
