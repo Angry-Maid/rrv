@@ -121,7 +121,7 @@ pub fn parse_datatype(i: &[u8]) -> IResult<&[u8], DataType> {
 
 pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
     let (i, (typemap_ver, typemap_entries)) = pair(parse_replay_string, le_u16)(i)?;
-    let (i, types) = count(parse_datatype, typemap_entries.into())(i)?;
+    let (mut i, types) = count(parse_datatype, typemap_entries.into())(i)?;
 
     let typemap = Typemap {
         version: typemap_ver,
@@ -133,68 +133,77 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
     let mut commons = Commons::new();
 
     loop {
-        let (i, id) = le_u16(i)?;
-        let i = match typemap.types.iter().find(|&v| v.id == id).unwrap() {
+        let id;
+        (i, id) = le_u16(i)?;
+        match typemap.types.iter().find(|&v| v.id == id).unwrap() {
             DataType {
                 typename: "ReplayRecorder.Header", // string, bool
                 ..
             } => {
-                let (i, (version, master)) = pair(parse_replay_string, parse_replay_bool)(i)?;
+                let version;
+                let master;
+                (i, (version, master)) = pair(parse_replay_string, parse_replay_bool)(i)?;
                 header.replay_header = Some(ReplayHeader { version, master });
-                i
             }
             DataType {
                 typename: "ReplayRecorder.EndOfHeader",
                 ..
-            } => i,
+            } => {}
             DataType {
                 typename: "Vanilla.Metadata", // string
                 version: "0.0.1",
                 ..
             } => {
-                let (i, version) = parse_replay_string(i)?;
+                let version;
+                (i, version) = parse_replay_string(i)?;
                 header.metadata = Some(Metadata {
                     version,
                     compatability_old_dc: None,
                 });
-                i
             }
             DataType {
                 typename: "Vanilla.Metadata", // string, bool
                 version: "0.0.2",
                 ..
             } => {
-                let (i, (version, compat)) = pair(parse_replay_string, parse_replay_bool)(i)?;
+                let version;
+                let compat;
+                (i, (version, compat)) = pair(parse_replay_string, parse_replay_bool)(i)?;
                 header.metadata = Some(Metadata {
                     version,
                     compatability_old_dc: Some(compat),
                 });
-                i
             }
             DataType {
                 typename: "Vanilla.Map.Geometry", // u8, u16, u32, f32 * 3 list, u16 list
                 ..
             } => {
-                let (i, (dimension, num_vert, num_idx)) = tuple((le_u8, le_u16, le_u32))(i)?;
-                let (i, vertices) = count(parse_vec3, num_vert.into())(i)?;
-                let (i, indices) = count(le_u16, usize::try_from(num_idx).unwrap())(i)?;
+                let dimension;
+                let num_vert;
+                let num_idx;
+                let vertices;
+                let indices;
+                (i, (dimension, num_vert, num_idx)) = tuple((le_u8, le_u16, le_u32))(i)?;
+                (i, vertices) = count(parse_vec3, num_vert.into())(i)?;
+                (i, indices) = count(le_u16, usize::try_from(num_idx).unwrap())(i)?;
                 header.level_geometry.push(Geometry {
                     dimension,
                     vertices,
                     indices,
                 });
-                i
             }
             DataType {
                 typename: "Vanilla.Map.Geometry.EOH",
                 ..
-            } => i,
+            } => {}
             DataType {
                 typename: "Vanilla.Map.Doors", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16, bool, u8, u8)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(
                     pair(
                         parse_commons,
                         tuple((le_u16, parse_replay_bool, le_u8, le_u8)),
@@ -211,14 +220,15 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Map.Ladders", // u16, (u8, f32 * 3, f16 * 3 + u8, f16)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(pair(parse_commons_no_id, le_f16), n.into())(i)?;
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(pair(parse_commons_no_id, le_f16), n.into())(i)?;
                 for (common, height) in items {
                     header.ladders.push(Ladder {
                         idx: commons.len(),
@@ -226,26 +236,28 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Map.Terminals", // u16, (i32, u8, f32 * 3, f16 * 3 + u8)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(parse_commons, n.into())(i)?;
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(parse_commons, n.into())(i)?;
                 for common in items {
                     header.terminals.push(Terminal { idx: commons.len() });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Map.Generators", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(pair(parse_commons, le_u16), n.into())(i)?;
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(pair(parse_commons, le_u16), n.into())(i)?;
                 for (common, serial) in items {
                     header.generators.push(Generator {
                         idx: commons.len(),
@@ -253,14 +265,15 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Map.DisinfectStations", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(pair(parse_commons, le_u16), n.into())(i)?;
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(pair(parse_commons, le_u16), n.into())(i)?;
                 for (common, serial) in items {
                     header.disinfect_stations.push(DisinfectStation {
                         idx: commons.len(),
@@ -268,14 +281,15 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Map.BulkheadControllers", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(pair(parse_commons, le_u16), n.into())(i)?;
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(pair(parse_commons, le_u16), n.into())(i)?;
                 for (common, serial) in items {
                     header.bulkhead_controllers.push(BulkheadController {
                         idx: commons.len(),
@@ -283,14 +297,15 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Map.ResourceContainers", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, u16, bool)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(
                     pair(parse_commons, tuple((le_u16, parse_replay_bool))),
                     n.into(),
                 )(i)?;
@@ -304,14 +319,15 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
             DataType {
                 typename: "Vanilla.Enemy.Spitters", // u16, (i32, u8, f32 * 3, f16 * 3 + u8, f16)
                 ..
             } => {
-                let (i, n) = le_u16(i)?;
-                let (i, items) = count(pair(parse_commons, le_f16), n.into())(i)?;
+                let n;
+                let items;
+                (i, n) = le_u16(i)?;
+                (i, items) = count(pair(parse_commons, le_f16), n.into())(i)?;
                 for (common, scale) in items {
                     header.spitters.push(Spitter {
                         idx: commons.len(),
@@ -319,9 +335,8 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                     });
                     commons.push(common);
                 }
-                i
             }
-            _ => i,
+            _ => {}
         };
         if i.is_empty() {
             break;
