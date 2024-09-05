@@ -1,6 +1,4 @@
-use std::default;
-
-use glam::{DQuat, Quat, Vec3};
+use glam::{DQuat, Vec3};
 use strum_macros::FromRepr;
 
 #[derive(Debug, Default)]
@@ -27,7 +25,6 @@ pub struct ReplayHeader<'a> {
 
 #[derive(Debug)]
 pub struct Common {
-    pub id: Option<i32>,
     pub dimension: u8,
     pub position: Vec3,
     pub rotation: DQuat,
@@ -71,6 +68,7 @@ pub enum DoorSize {
 
 #[derive(Debug)]
 pub struct Door {
+    pub id: i32,
     pub idx: usize,
     pub serial: u16,
     pub checkpoint: bool,
@@ -86,11 +84,13 @@ pub struct Ladder {
 
 #[derive(Debug)]
 pub struct Terminal {
+    pub id: i32,
     pub idx: usize,
 }
 
 #[derive(Debug)]
 pub struct Generator {
+    pub id: i32,
     pub idx: usize,
     pub serial: u16,
 }
@@ -106,6 +106,7 @@ pub enum LockType {
 
 #[derive(Debug)]
 pub struct ResourceContainer {
+    pub id: i32,
     pub idx: usize,
     pub serial: u16,
     pub locker: bool,
@@ -115,18 +116,24 @@ pub struct ResourceContainer {
 
 #[derive(Debug)]
 pub struct DisinfectStation {
+    pub id: i32,
     pub idx: usize,
     pub serial: u16,
 }
 
 #[derive(Debug)]
 pub struct BulkheadController {
+    pub id: i32,
     pub idx: usize,
     pub serial: u16,
+    pub main: Option<i32>,
+    pub secondary: Option<i32>,
+    pub ovl: Option<i32>,
 }
 
 #[derive(Debug)]
 pub struct Spitter {
+    pub id: i32,
     pub idx: usize,
     pub scale: f16,
 }
