@@ -19,7 +19,8 @@ strum = "0.26.3"
 strum_macros = "0.26.4"
 
 # Bevy deps
-# bevy = { version = "0.14.0", features = ["dynamic_linking"] }
+bevy = "0.14.0"
+bevy_flycam = "0.14.0"
 # leafwing-input-manager = "0.15.0"
 
 [package]
@@ -33,9 +34,27 @@ rrv-core.workspace = true
 rand.workspace = true
 log.workspace = true
 env_logger.workspace = true
-
-# bevy.workspace = true
+bevy.workspace = true
+bevy_flycam.workspace = true
 # leafwing-input-manager.workspace = true
+
+
+[features]
+default = [
+    # Default to a native dev build.
+    "dev_native",
+]
+dev = [
+    # Improve compile times for dev builds by linking Bevy as a dynamic library.
+    "bevy/dynamic_linking",
+]
+dev_native = [
+    "dev",
+    # Enable asset hot reloading for native dev builds.
+    "bevy/file_watcher",
+    # Enable embedded asset hot reloading for native dev builds.
+    "bevy/embedded_watcher",
+]
 
 [profile.dev]
 opt-level = 1

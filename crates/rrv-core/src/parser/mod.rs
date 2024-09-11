@@ -33,28 +33,29 @@ pub fn parse_replay_file_commons(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> 
     let (i, typemap_and_header_bytes) = take(metadata_size)(i)?;
     let (leftover, (typemap, header)) = parse_typemap_and_header(typemap_and_header_bytes)?;
 
-    info!(
-        "{:#?}\n{:#?}",
-        header.bulkhead_controllers.first().unwrap(),
-        header.commons[header.bulkhead_controllers.first().unwrap().idx]
-    );
-    let bulkhead_door = header
-        .doors
-        .iter()
-        .find(|&v| {
-            v.id == header
-                .bulkhead_controllers
-                .first()
-                .unwrap()
-                .secondary
-                .unwrap()
-        })
-        .unwrap();
-    info!(
-        "{:#?}\n{:#?}",
-        bulkhead_door, header.commons[bulkhead_door.idx]
-    );
-    info!("{:?}", leftover);
+    // info!(
+    //     "{:#?}\n{:#?}",
+    //     header.bulkhead_controllers.first().unwrap(),
+    //     header.commons[header.bulkhead_controllers.first().unwrap().idx]
+    // );
+    // let bulkhead_door = header
+    //     .doors
+    //     .iter()
+    //     .find(|&v| {
+    //         v.id == header
+    //             .bulkhead_controllers
+    //             .first()
+    //             .unwrap()
+    //             .secondary
+    //             .unwrap()
+    //     })
+    //     .unwrap();
+    // info!(
+    //     "{:#?}\n{:#?}",
+    //     bulkhead_door, header.commons[bulkhead_door.idx]
+    // );
+    // info!("{:#?}", header.level_geometry.first().unwrap().vertices);
+    // info!("{:?}", leftover);
 
     Ok((i, (typemap, header)))
 }
@@ -107,7 +108,7 @@ pub fn parse_replay_identifier_type(i: &[u8]) -> IResult<&[u8], IdentifierType> 
 
 pub fn parse_vec3(i: &[u8]) -> IResult<&[u8], Vec3> {
     let (i, (x, y, z)) = tuple((le_f32, le_f32, le_f32))(i)?;
-    Ok((i, Vec3::new(x, y, z)))
+    Ok((i, Vec3::new(x, y, -z)))
 }
 
 pub type BulkheadLayers = (Option<i32>, Option<i32>, Option<i32>);
@@ -140,35 +141,37 @@ pub fn parse_bulkhead_dc(i: &[u8]) -> IResult<&[u8], BulkheadLayers> {
 
 pub fn le_f16(i: &[u8]) -> IResult<&[u8], f16> {
     let (i, bits) = le_u16(i)?;
+    // Unity is left-handed y up, bevy is right-handed y up
     Ok((i, f16::from_bits(bits)))
 }
 
 pub fn parse_half_quat(i: &[u8]) -> IResult<&[u8], DQuat> {
     let (i, (idx, a, b, c)) = tuple((le_u8, le_f16, le_f16, le_f16))(i)?;
-    let quat = match idx {
+    let (x, y, z, w) = match idx {
         0 => {
             let (y, z, w): (f64, f64, f64) = (a.into(), b.into(), c.into());
             let x = f64::sqrt((1. - y.powi(2) - z.powi(2) - w.powi(2)).clamp(0., 1.));
-            DQuat::from_xyzw(x, y, z, w)
+            (x, y, z, w)
         }
         1 => {
             let (x, z, w): (f64, f64, f64) = (a.into(), b.into(), c.into());
             let y = f64::sqrt((1. - x.powi(2) - z.powi(2) - w.powi(2)).clamp(0., 1.));
-            DQuat::from_xyzw(x, y, z, w)
+            (x, y, z, w)
         }
         2 => {
             let (x, y, w): (f64, f64, f64) = (a.into(), b.into(), c.into());
             let z = f64::sqrt((1. - x.powi(2) - y.powi(2) - w.powi(2)).clamp(0., 1.));
-            DQuat::from_xyzw(x, y, z, w)
+            (x, y, z, w)
         }
         3 => {
             let (x, y, z): (f64, f64, f64) = (a.into(), b.into(), c.into());
             let w = f64::sqrt((1. - x.powi(2) - y.powi(2) - z.powi(2)).clamp(0., 1.));
-            DQuat::from_xyzw(x, y, z, w)
+            (x, y, z, w)
         }
         _ => unreachable!(),
     };
-    Ok((i, quat))
+    // Unity is left-handed y up, bevy is right-handed y up
+    Ok((i, DQuat::from_xyzw(x, y, -z, w)))
 }
 
 pub fn parse_commons(i: &[u8]) -> IResult<&[u8], Common> {
@@ -214,7 +217,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
         let id;
         (i, id) = le_u16(i)?;
         let t = typemap.types.iter().find(|&v| v.id == id).unwrap();
-        info!("{:#?}", t);
+        // info!("{:#?}", t);
         match t {
             DataType {
                 typename: "ReplayRecorder.Header", // string, bool
@@ -223,7 +226,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let version;
                 let master;
                 (i, (version, master)) = pair(parse_replay_string, parse_replay_bool)(i)?;
-                info!("{:?} {:?}", version, master);
+                // info!("{:?} {:?}", version, master);
                 header.replay_header = Some(ReplayHeader { version, master });
             }
             DataType {
@@ -237,7 +240,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
             } => {
                 let version;
                 (i, version) = parse_replay_string(i)?;
-                info!("{:?}", version);
+                // info!("{:?}", version);
                 header.metadata = Some(Metadata {
                     version,
                     compatability_old_dc: None,
@@ -251,7 +254,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let version;
                 let compat;
                 (i, (version, compat)) = pair(parse_replay_string, parse_replay_bool)(i)?;
-                info!("{:?} {:?}", version, compat);
+                // info!("{:?} {:?}", version, compat);
                 header.metadata = Some(Metadata {
                     version,
                     compatability_old_dc: Some(compat),
@@ -267,7 +270,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let vertices;
                 let indices;
                 (i, (dimension, num_vert, num_idx)) = tuple((le_u8, le_u16, le_u32))(i)?;
-                info!("{:?} {:?} {:?}", dimension, num_vert, num_idx);
+                // info!("{:?} {:?} {:?}", dimension, num_vert, num_idx);
                 (i, vertices) = count(parse_vec3, num_vert.into())(i)?;
                 (i, indices) = count(le_u16, usize::try_from(num_idx).unwrap())(i)?;
                 header.level_geometry.push(Geometry {
@@ -287,7 +290,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(
                     pair(
                         tuple((le_i32, parse_commons)),
@@ -314,7 +317,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(pair(parse_commons, le_f16), n.into())(i)?;
                 for (common, height) in items {
                     header.ladders.push(Ladder {
@@ -331,7 +334,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(tuple((le_i32, parse_commons)), n.into())(i)?;
                 for (id, common) in items {
                     header.terminals.push(Terminal {
@@ -348,7 +351,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(pair(tuple((le_i32, parse_commons)), le_u16), n.into())(i)?;
                 for ((id, common), serial) in items {
                     header.generators.push(Generator {
@@ -366,7 +369,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(pair(tuple((le_i32, parse_commons)), le_u16), n.into())(i)?;
                 for ((id, common), serial) in items {
                     header.disinfect_stations.push(DisinfectStation {
@@ -384,7 +387,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(
                     pair(
                         tuple((le_i32, parse_commons)),
@@ -412,7 +415,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(
                     pair(
                         tuple((le_i32, parse_commons)),
@@ -441,7 +444,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(
                     pair(
                         tuple((le_i32, parse_commons)),
@@ -475,7 +478,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(
                     pair(
                         tuple((le_i32, parse_commons)),
@@ -511,7 +514,7 @@ pub fn parse_typemap_and_header(i: &[u8]) -> IResult<&[u8], (Typemap, Header)> {
                 let n;
                 let items;
                 (i, n) = le_u16(i)?;
-                info!("{:?}", n);
+                // info!("{:?}", n);
                 (i, items) = count(pair(tuple((le_i32, parse_commons)), le_f16), n.into())(i)?;
                 for ((id, common), scale) in items {
                     header.spitters.push(Spitter {
